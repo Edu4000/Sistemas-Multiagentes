@@ -20,15 +20,17 @@ def agent_portrayal(agent):
     portrayal = {
         "Shape": "circle",
         "Filled": "true",
-        "r": 0.5,
     }
     if (isinstance(agent, Box)):
+        portrayal["r"] = 0.4
         portrayal["Layer"] = 0
         portrayal["Color"] = "brown"
     elif (isinstance(agent, Robot)):
+        portrayal["r"] = 0.7
         portrayal["Layer"] = 0
         portrayal["Color"] = "black"
     elif (isinstance(agent, Stand)):
+        portrayal["r"] = 0.1
         portrayal["Layer"] = 0
         portrayal["Color"] = "gray"
 

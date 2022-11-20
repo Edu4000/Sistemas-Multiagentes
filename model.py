@@ -72,6 +72,11 @@ class Explorer(mesa.Agent):
         # Move
         pass
 
+class Box (mesa.Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+        self.can_be_grabbed = True
+
 class Robot (mesa.Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
@@ -90,31 +95,42 @@ class Robot (mesa.Agent):
     # Si hay empate y se pierde el lugar, elegir uno nuevo
     # Moverse
 
-    def negotiate(self):
-        size = self.model.grid.width
-        moves = []
-        for i in [-1, 1]:
-            if (0 <= self.pos[0] + i and self.pos[0] + i < size):
-                moves.append((self.pos[0] + i, self.pos[1]))
-            if (0 <= self.pos[1] + i and self.pos[1] + i < size):
-                moves.append((self.pos[0], self.pos[1] + i))
-        return random.choice(moves)
+    def grab(self, agent):
+        agent.can_be_grabbed = False
+        self.box = agent
+
+    def drop(self, agent):
+        self.model.grid.move_agent()
+        self.box = None
     
     def step(self):
+        if (isinstance(self.box, Box)):
+            pass
+
         moves = []
         for i in [-1, 1]:
             moves.append((self.pos[0], self.pos[1] + i))
             moves.append((self.pos[0] + i, self.pos[1]))
+
+        neighbors = self.model.grid.get_neighbors(self.pos, False, False, 1)
+
+        for agent in neighbors:
+            if (isinstance(agent, Box) and self.box == None and agent.can_be_grabbed):
+                self.model.grid.move_agent(agent, self.pos)
+                self.grab(agent)
+                return
+            try:
+                moves.remove(agent.pos)
+            except:
+                pass
+
         try:
-            next_pos = tuple(random.choice(moves))
+            next_pos = moves[random.randint(0, len(moves))]
             print("Moviendo de", self.pos, " a", next_pos)
             self.model.grid.move_agent(self, (int(next_pos[0]), int(next_pos[1])))
+            self.model.grid.move_agent(self.box, (int(next_pos[0]), int(next_pos[1])))
         except:
             pass
-
-class Box (mesa.Agent):
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
 
 class Stand(mesa.Agent):
     def __init__(self, unique_id, model):
