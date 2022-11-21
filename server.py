@@ -38,22 +38,6 @@ def agent_portrayal(agent):
 
 grid = mesa.visualization.CanvasGrid(agent_portrayal, SIZE, SIZE, 500, 500)
 
-# chart = mesa.visualization.ChartModule(
-#     [
-#         {"Label": "Average Speed", "Color":"green"},
-#     ],
-#     canvas_height=300,
-#     data_collector_name="data"
-# )
-
-# chart2 = mesa.visualization.ChartModule(
-#     [
-#         {"Label": "Perc. Halted Cars", "Color":"red"},
-#     ],
-#     canvas_height=300,
-#     data_collector_name="data"
-# )
-
 server = mesa.visualization.ModularServer(
     Almacen, [grid], "Modelo de Interseccion", 
     simulation_params

@@ -3,6 +3,17 @@ import mesa
 import random
 import numpy as np
 
+def get_mission(pos, boxes):
+    dist = 100
+    assigned_box = None
+    for box in boxes:
+        manhattan_dist = abs(pos[0] - box.pos[0]) + abs(pos[1] - box.pos[1])
+        if dist > manhattan_dist:
+            dist = manhattan_dist
+            assigned_box = box
+    boxes.remove(assigned_box)
+    return assigned_box
+
 class Almacen (mesa.Model):
     def __init__(self, width, height, num_boxes) -> None:
         
@@ -11,9 +22,12 @@ class Almacen (mesa.Model):
         self.assigned = []
         self.boxes = []
         self.stands = []
+        self.dropoff_pos = (0,0)
+        self.end_pos = (width-1, height-1)
 
         # Creating Grid        
         self.grid = mesa.space.MultiGrid(width, height, False)
+        # self.grid.get_neighbors()
 
         # Creating Scheduler
         self.schedule = mesa.time.BaseScheduler(self)
@@ -25,6 +39,7 @@ class Almacen (mesa.Model):
             while (len(self.grid.get_cell_list_contents(pos)) == 1):
                 pos = (random.randint(0, width-1), random.randint(0, width-1))
             self.grid.place_agent(box, pos)
+            self.boxes.append(box)
 
         for i in range(5):
             robot = Robot(f"robot_{i}", self)
@@ -36,7 +51,6 @@ class Almacen (mesa.Model):
 
     def step(self):
         self.schedule.step()
-
 
 class Explorer(mesa.Agent):
     def __init__(self, unique_id: int, model: Almacen) -> None:
@@ -82,7 +96,6 @@ class Robot (mesa.Agent):
         super().__init__(unique_id, model)
         self.box = None
         self.assigned = None
-        self.goal = None
 
     def get_route(self):
         if (isinstance(self.box, Box)):
@@ -90,47 +103,78 @@ class Robot (mesa.Agent):
         else:
             pass
 
-    # Checar a que lugares puede moverse
-    # Elegir nuevo lugar y comunicarlo
-    # Si hay empate y se pierde el lugar, elegir uno nuevo
-    # Moverse
-
     def grab(self, agent):
         agent.can_be_grabbed = False
         self.box = agent
+        self.assigned = None
 
-    def drop(self, agent):
-        self.model.grid.move_agent()
+    def drop(self):
+        self.model.grid.move_agent(self.box, self.model.dropoff_pos)
         self.box = None
-    
-    def step(self):
-        if (isinstance(self.box, Box)):
-            pass
 
-        moves = []
-        for i in [-1, 1]:
-            moves.append((self.pos[0], self.pos[1] + i))
-            moves.append((self.pos[0] + i, self.pos[1]))
+    def step(self):
+        objective = self.pos
 
         neighbors = self.model.grid.get_neighbors(self.pos, False, False, 1)
 
-        for agent in neighbors:
-            if (isinstance(agent, Box) and self.box == None and agent.can_be_grabbed):
-                self.model.grid.move_agent(agent, self.pos)
-                self.grab(agent)
-                return
-            try:
-                moves.remove(agent.pos)
-            except:
-                pass
+        if (self.assigned == None):
+            if (len(self.model.boxes) == 0):
+                objective = self.model.end_pos
+            else:
+                self.assigned = get_mission(self.pos, self.model.boxes)
+                objective = self.assigned.pos
+                if (abs(self.pos[0] - objective[0]) + abs(self.pos[1] - objective[1]) == 1):
+                    box = self.model.grid.get_cell_list_contents(objective)
+                    self.grab(box[0])
+                    return
+        else:
+            if (self.box == None):
+                objective = self.assigned.pos
+                if (abs(self.pos[0] - objective[0]) + abs(self.pos[1] - objective[1]) == 1):
+                    box = self.model.grid.get_cell_list_contents(objective)
+                    self.grab(box[0])
+                    return
+            else:
+                objective = self.model.dropoff_pos
+                if (abs(self.pos[0] - objective[0]) + abs(self.pos[1] - objective[1]) == 1):
+                    self.drop()
+                    return
 
-        try:
-            next_pos = moves[random.randint(0, len(moves))]
-            print("Moviendo de", self.pos, " a", next_pos)
-            self.model.grid.move_agent(self, (int(next_pos[0]), int(next_pos[1])))
-            self.model.grid.move_agent(self.box, (int(next_pos[0]), int(next_pos[1])))
-        except:
-            pass
+        if (objective[0] - self.pos[0] > 0):
+            diff_x = 1
+        elif (objective[0] - self.pos[0] < 0):
+            diff_x = -1
+        else:
+            diff_x = 0
+
+        if (diff_x != 0):
+            next_pos = (self.pos[0] + int(diff_x), self.pos[1])
+            agents = self.model.grid.get_cell_list_contents(next_pos)
+            if (len(agents) == 0):
+                self.model.grid.move_agent(self, next_pos)
+                try:
+                    self.model.grid.move_agent(self.box, next_pos)
+                except:
+                    pass
+                return
+
+        if (objective[1] - self.pos[1] > 0):
+            diff_y = 1
+        elif (objective[1] - self.pos[1] < 0):
+            diff_y = -1
+        else:
+            diff_y = 0
+
+        if (diff_y != 0):
+            next_pos = (self.pos[0], self.pos[1] + int(diff_y))
+            agents = self.model.grid.get_cell_list_contents(next_pos)
+            if (len(agents) == 0):
+                self.model.grid.move_agent(self, next_pos)
+                try:
+                    self.model.grid.move_agent(self.box, next_pos)
+                except:
+                    pass
+                return
 
 class Stand(mesa.Agent):
     def __init__(self, unique_id, model):
