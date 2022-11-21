@@ -21,14 +21,14 @@ def get_distance(p, q):
 
 class Almacen (mesa.Model):
     def __init__(self, width, height, num_boxes) -> None:
-        
+
         # Model Variables Shared Between Agents
         self.shared_map = [[[0] * height] * width]
         self.boxes = []
         self.dropoff_pos = (0,0)
         self.end_pos = (width-1, height-1)
 
-        # Creating Grid        
+        # Creating Grid
         self.grid = mesa.space.MultiGrid(width, height, False)
 
         # Creating Scheduler
@@ -58,7 +58,7 @@ class Explorer(mesa.Agent):
     def __init__(self, unique_id: int, model: Almacen) -> None:
         super().__init__(unique_id, model)
         self.vision = 10
-        
+
     def announce(self):
         pass
 
@@ -147,75 +147,57 @@ class Robot (mesa.Agent):
                     self.drop()
                     return
 
-        moves = self.model.grid.get_neighborhood(self.pos, False, False, 1)
+        possible_steps = self.model.grid.get_neighborhood(
+            self.pos, moore=False, include_center=False
+        )
 
-        if (objective[0] - self.pos[0] > 0):
-            diff_x = 1
-        elif (objective[0] - self.pos[0] < 0):
-            diff_x = -1
-        else:
-            diff_x = 0
+        depurated_steps = []
 
-        if (diff_x != 0):
-            next_pos = (self.pos[0] + int(diff_x), self.pos[1])
-            agents = self.model.grid.get_cell_list_contents(next_pos)
-            if (len(agents) == 0):
-                self.model.grid.move_agent(self, next_pos)
-                try:
-                    self.model.grid.move_agent(self.box, next_pos)
-                except:
-                    pass
-                return
+        for steps in possible_steps:
+            searching = self.model.grid.get_cell_list_contents([steps])
+            cannot_use_step = False
+
+            if len(searching) > 0:
+                print(f":::--Agent found in {steps}")
+                for agent in searching:
+                    if isinstance(agent, Robot) or isinstance(agent, Box):
+                        cannot_use_step = True
+                    else:
+                        print("Can use this step!")
+                        break
+                        # cannot move and exit
+            if cannot_use_step:
+                continue
             else:
-                try:
-                    moves.remove(next_pos)
-                except:
-                    pass
+                depurated_steps.append(steps)
 
-        if (objective[1] - self.pos[1] > 0):
-            diff_y = 1
-        elif (objective[1] - self.pos[1] < 0):
-            diff_y = -1
-        else:
-            diff_y = 0
+        if (len(depurated_steps) == 0):
+            return
 
-        if (diff_y != 0):
-            next_pos = (self.pos[0], self.pos[1] + int(diff_y))
-            agents = self.model.grid.get_cell_list_contents(next_pos)
-            if (len(agents) == 0):
-                self.model.grid.move_agent(self, next_pos)
-                try:
-                    self.model.grid.move_agent(self.box, next_pos)
-                except:
-                    pass
-                return
-            else:
-                try:
-                    moves.remove(next_pos)
-                except:
-                    pass
+        min = 2000
+        best = []
 
-        if (not(len(self.model.boxes) == 0 and self.box == None and self.assigned == None)):
-            if (len(moves) == 0):
-                pass
-            elif (len(moves) == 1):
-                self.model.grid.move_agent(self, moves[0])
-                try:
-                    self.model.grid.move_agent(self.box, moves[0])
-                except:
-                    pass
-            elif (get_distance(objective, moves[0]) < get_distance(objective, moves[1])):
-                self.model.grid.move_agent(self, moves[0])
-                try:
-                    self.model.grid.move_agent(self.box, moves[0])
-                except:
-                    pass
-            else:
-                self.model.grid.move_agent(self, moves[1])
-                try:
-                    self.model.grid.move_agent(self.box, moves[1])
-                except:
-                    pass
+        for opts in depurated_steps:
+            x_i, y_i = opts
+            x_j, y_j = objective
+
+            new_point = [x_i, y_i]
+            objective = [x_j, y_j]
+
+            aux = get_distance(new_point, objective)
+
+            if (aux < min):
+                best = new_point
+                min = aux
+
+        print(f"The best possible distance is {min}")
+        self.model.grid.move_agent(self, tuple(e for e in best))
+
+        try:
+            self.model.grid.move_agent(self.box, tuple(e for e in best))
+        except:
+            pass
+
 
 class Stand(mesa.Agent):
     def __init__(self, unique_id, model):
