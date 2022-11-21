@@ -29,6 +29,8 @@ class Almacen (mesa.Model):
         self.end_pos = (width-1, height-1)
         self.ordered_boxes = []
         self.num_boxes = num_boxes
+        self.robot_moves = 0
+        self.step_num = 0
 
         # Creating Grid
         self.grid = mesa.space.MultiGrid(width, height, False)
@@ -53,8 +55,29 @@ class Almacen (mesa.Model):
             self.grid.place_agent(robot, pos)
             self.schedule.add(robot)
 
+        self.data = mesa.DataCollector(
+            {
+                "Steps": Almacen.steps,
+                "RobotMoves": Almacen.robot_moves,
+            }
+        )
+
     def step(self):
-        self.schedule.step()
+        if (len(self.ordered_boxes) < self.num_boxes):
+            self.schedule.step()
+            self.step_num += 1
+        else:
+            print("Steps", self.step_num)
+            print("Robot moves", self.robot_moves)
+        self.data.collect(self)
+    
+    @staticmethod
+    def steps(model):
+        return model.step_num
+    
+    @staticmethod
+    def robot_moves(model):
+        return model.robot_moves
 
 
 class Box (mesa.Agent):
@@ -143,6 +166,7 @@ class Robot (mesa.Agent):
                 depurated_steps.append(steps)
 
         if (len(depurated_steps) == 0):
+            self.model.robot_moves -= 1
             return
 
         min = 2000
@@ -163,6 +187,9 @@ class Robot (mesa.Agent):
 
         print(f"The best possible distance is {min}")
         self.model.grid.move_agent(self, tuple(e for e in best))
+
+        if (objective != self.model.end_pos):
+            self.model.robot_moves += 1
 
         try:
             self.model.grid.move_agent(self.box, tuple(e for e in best))

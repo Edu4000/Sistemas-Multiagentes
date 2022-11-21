@@ -29,17 +29,29 @@ def agent_portrayal(agent):
         portrayal["r"] = 0.7
         portrayal["Layer"] = 0
         portrayal["Color"] = "black"
-    elif (isinstance(agent, Stand)):
-        portrayal["r"] = 0.1
-        portrayal["Layer"] = 0
-        portrayal["Color"] = "gray"
 
     return portrayal
 
 grid = mesa.visualization.CanvasGrid(agent_portrayal, SIZE, SIZE, 500, 500)
 
+chart = mesa.visualization.ChartModule(
+    [
+        {"Label": "Steps", "Color":"green"},
+    ],
+    canvas_height=300,
+    data_collector_name="data"
+)
+
+chart2 = mesa.visualization.ChartModule(
+    [
+        {"Label": "RobotMoves", "Color":"green"},
+    ],
+    canvas_height=300,
+    data_collector_name="data"
+)
+
 server = mesa.visualization.ModularServer(
-    Almacen, [grid], "Modelo de Interseccion", 
+    Almacen, [grid, chart, chart2], "Modelo de Interseccion", 
     simulation_params
 )
 server.port = 8521  # The default
