@@ -27,6 +27,8 @@ class Almacen (mesa.Model):
         self.boxes = []
         self.dropoff_pos = (0,0)
         self.end_pos = (width-1, height-1)
+        self.ordered_boxes = []
+        self.num_boxes = num_boxes
 
         # Creating Grid
         self.grid = mesa.space.MultiGrid(width, height, False)
@@ -98,7 +100,6 @@ class Robot (mesa.Agent):
         super().__init__(unique_id, model)
         self.box = None
         self.assigned = None
-        self.dir = True
 
     def get_route(self):
         if (isinstance(self.box, Box)):
@@ -112,6 +113,7 @@ class Robot (mesa.Agent):
         self.assigned = None
 
     def drop(self):
+        self.model.ordered_boxes.append(self.box)
         self.model.grid.move_agent(self.box, self.model.dropoff_pos)
         if (len(self.model.grid.get_cell_list_contents(self.model.dropoff_pos)) == 5):
             self.model.dropoff_pos = (self.model.dropoff_pos[0], self.model.dropoff_pos[1] + 1)
@@ -124,6 +126,7 @@ class Robot (mesa.Agent):
             if (len(self.model.boxes) == 0):
                 # Move towards end position
                 objective = self.model.end_pos
+                self.dir = False
             else:
                 # Get a box assignation and moves towards it
                 self.assigned = get_mission(self.pos, self.model.boxes)
@@ -160,12 +163,13 @@ class Robot (mesa.Agent):
             if len(searching) > 0:
                 print(f":::--Agent found in {steps}")
                 for agent in searching:
-                    if isinstance(agent, Robot) or isinstance(agent, Box):
-                        cannot_use_step = True
-                    else:
-                        print("Can use this step!")
-                        break
-                        # cannot move and exit
+                    if len(self.model.ordered_boxes) != self.model.num_boxes:
+                        if isinstance(agent, Robot) or isinstance(agent, Box):
+                            cannot_use_step = True
+                        else:
+                            print("Can use this step!")
+                            break
+                            # cannot move and exit
             if cannot_use_step:
                 continue
             else:
