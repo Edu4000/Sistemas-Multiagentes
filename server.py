@@ -10,7 +10,7 @@ simulation_params = {
         "Numero de cajas",
         5,
         5,
-        10,
+        20,
         1,
         description="Elija el numero de cajas."
     )
