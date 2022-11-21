@@ -56,39 +56,6 @@ class Almacen (mesa.Model):
     def step(self):
         self.schedule.step()
 
-class Explorer(mesa.Agent):
-    def __init__(self, unique_id: int, model: Almacen) -> None:
-        super().__init__(unique_id, model)
-        self.vision = 10
-
-    def announce(self):
-        pass
-
-    def step(self):
-        cells = []
-        # Search for objects inside the range of vision
-        for i in range(self.vision):
-            x, y = self.pos
-
-            cells.append((x+i,y))
-            cells.append((x+i,y+i))
-            cells.append((x-i, y-i))
-
-        for cell in cells:
-            try:
-                searching = self.model.grid.get_cells_list_contents(cell)
-
-                if len(searching) > 0:
-                    for agent in searching:
-                        if (isinstance(agent, Stand)):
-                            self.model.stands.append(agent)
-                        if (isinstance(agent, Box)):
-                            self.model.boxes.append(agent)
-            except:
-                continue
-
-        # Move
-        pass
 
 class Box (mesa.Agent):
     def __init__(self, unique_id, model):
@@ -201,9 +168,3 @@ class Robot (mesa.Agent):
             self.model.grid.move_agent(self.box, tuple(e for e in best))
         except:
             pass
-
-
-class Stand(mesa.Agent):
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
-        self.type == "stand"
